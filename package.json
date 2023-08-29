@@ -1,0 +1,20 @@
+{
+  "name": "cragseason",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "scrape": "ts-node scraper.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/cheerio": "^0.22.31",
+    "@types/node": "^20.5.1",
+    "chart.js": "^4.4.0",
+    "cheerio": "^1.0.0-rc.12",
+    "geolib": "^3.3.4",
+    "svelte-chartjs": "^3.1.2"
+  }
+}

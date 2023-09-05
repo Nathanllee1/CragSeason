@@ -147,7 +147,7 @@ function generateGeoJSONFeatures(climbingAreas: mpCondensed[]): any {
     return features;
 }
 
-const outputPath = "processed/all.geojson"
+const outputPath = "frontend/static/all.geojson"
 
 const processFile = async (dataPath: string) => {
     const data = await loadJsonFromFile(dataPath);
@@ -157,7 +157,8 @@ const processFile = async (dataPath: string) => {
 
         const geojson = generateGeoJSONFeatures(areas);
         return geojson
-    } catch {
+    } catch(e) {
+        console.log(e, dataPath)
         return[]
     }
     
@@ -167,15 +168,15 @@ async function main() {
     const files = await readdir("data")
 
     // await appendFile(outputPath, `{"type": "FeatureCollection", "features":[`)
-    /*
+    let features: any[] = []
     for (const file of files) {
-        await processFile(join("data", file))
+        features.push(await processFile(join("data", file)))
     }
-    */
+    
 
 
     
-
+    /*
     let features = await Promise.all(files.map(async file => {
         // geojson.features = geojson.features.concat(await processFile(join("data", file)))
 
@@ -184,11 +185,12 @@ async function main() {
         // console.log(geojson.features.length)
 
     }))
+    */
 
-    console.log(features.flat())
+    // console.log(features.flat())
     let geojson = {"type": "FeatureCollection", features: features.flat()}
 
-    await writeJsonToFile(outputPath, geojson)
+    await writeJsonToFile(outputPath, geojson, false)
     //await appendFile(outputPath, "]}")
 }
 

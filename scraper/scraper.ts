@@ -138,9 +138,9 @@ export async function loadJsonFromFile(filePath: string): Promise<mp> {
     }
 }
 
-export async function writeJsonToFile(filePath: string, jsonData: object) {
+export async function writeJsonToFile(filePath: string, jsonData: object, spaces=false) {
     try {
-        const stringifiedData = JSON.stringify(jsonData, null, 4);  // 4 spaces indentation
+        const stringifiedData = JSON.stringify(jsonData, null, spaces ? 4 : undefined);  // 4 spaces indentation
         await writeFile(filePath, stringifiedData, 'utf8');
     } catch (error) {
         throw error;

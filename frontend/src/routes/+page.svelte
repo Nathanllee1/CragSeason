@@ -6,7 +6,8 @@
     import { currentPoint } from "$lib";
     import Info from "./info.svelte";
     import { mapStore } from "$lib/map";
-    import mapboxgl from "mapbox-gl"
+    import mapboxgl from "mapbox-gl";
+    import Legend from "./legend.svelte";
 
     onMount(async () => {
         if (!browser) {
@@ -25,9 +26,11 @@
 </script>
 
 <div class="absolute z-10 w-screen bg-base-100 navbar">
-    <div class="flex-1 gap-6 align-baseline">
+    <div class="flex-1 gap-2 align-baseline">
         <h1 class="text-2xl font-extrabold text-primary">Crag Season</h1>
-        <div class="self-auto mt-1 hidden lg:block">View what season people climb</div>
+        <div class="self-auto mt-1 hidden lg:block">
+            View what season people climb
+        </div>
     </div>
 
     <div class="font-light text-sm flex-none block">
@@ -38,8 +41,11 @@
     </div>
 </div>
 
-<Info />
+<Legend />
 
+{#if $currentPoint && $currentPoint.properties}
+    <Info />
+{/if}
 <div id="mapboxMap" class="h-screen w-screen" />
 
 <style>

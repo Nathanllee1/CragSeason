@@ -7,8 +7,6 @@
             return;
         }
         
-        console.log(point)
-
         const monthData = [
             {
                 values: JSON.parse(point.properties.monthTicks),

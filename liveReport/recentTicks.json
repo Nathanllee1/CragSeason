@@ -1,0 +1,362 @@
+[
+    {
+        "id": 200575048,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  Lead. ",
+        "createdAt": "2025-03-08T20:44:20.000000Z",
+        "updatedAt": "2025-03-08T20:44:20.000000Z",
+        "user": {
+            "id": 201897894,
+            "name": "Jack Young"
+        }
+    },
+    {
+        "id": 200545682,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Pinkpoint",
+        "pitches": 1,
+        "text": " &middot;  Lead / Pinkpoint. ",
+        "createdAt": "2025-03-01T22:51:01.000000Z",
+        "updatedAt": "2025-03-01T22:51:01.000000Z",
+        "user": {
+            "id": 201265558,
+            "name": "Tiffany Callaway"
+        }
+    },
+    {
+        "id": 200557893,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 2,
+        "text": " &middot;  Lead / Onsight. ",
+        "createdAt": "2025-03-03T07:17:32.000000Z",
+        "updatedAt": "2025-03-03T07:17:32.000000Z",
+        "user": {
+            "id": 201938917,
+            "name": "Josué Herrera"
+        }
+    },
+    {
+        "id": 200559131,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 2,
+        "text": " &middot;  Lead / Onsight. ",
+        "createdAt": "2025-03-03T17:06:25.000000Z",
+        "updatedAt": "2025-03-03T17:06:25.000000Z",
+        "user": {
+            "id": 201955130,
+            "name": "Nikki Gemmell"
+        }
+    },
+    {
+        "id": 200559135,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Follow",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  Follow. ",
+        "createdAt": "2025-03-03T17:06:45.000000Z",
+        "updatedAt": "2025-03-03T17:06:45.000000Z",
+        "user": {
+            "id": 201955130,
+            "name": "Nikki Gemmell"
+        }
+    },
+    {
+        "id": 200559139,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Follow",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  Follow. ",
+        "createdAt": "2025-03-03T17:07:15.000000Z",
+        "updatedAt": "2025-03-03T17:07:15.000000Z",
+        "user": {
+            "id": 201955130,
+            "name": "Nikki Gemmell"
+        }
+    },
+    {
+        "id": 200392759,
+        "date": "Sep 16, 2025, 12:00 am",
+        "comment": null,
+        "style": "",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": "",
+        "createdAt": "2025-01-16T23:42:24.000000Z",
+        "updatedAt": "2025-01-16T23:42:24.000000Z",
+        "user": {
+            "id": 201379898,
+            "name": "Chris Godsey"
+        }
+    },
+    {
+        "id": 200575549,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Fell/Hung",
+        "pitches": 1,
+        "text": " &middot;  Lead / Fell/Hung. 1 hang",
+        "createdAt": "2025-03-08T22:03:35.000000Z",
+        "updatedAt": "2025-03-08T22:03:35.000000Z",
+        "user": {
+            "id": 200567774,
+            "name": "Sneha Inguva"
+        }
+    },
+    {
+        "id": 200576332,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Redpoint",
+        "pitches": 1,
+        "text": " &middot;  Lead / Redpoint. ",
+        "createdAt": "2025-03-08T23:56:00.000000Z",
+        "updatedAt": "2025-03-08T23:56:00.000000Z",
+        "user": {
+            "id": 112224337,
+            "name": "Dana Taylor"
+        }
+    },
+    {
+        "id": 200575662,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  Lead. ",
+        "createdAt": "2025-03-08T22:20:04.000000Z",
+        "updatedAt": "2025-03-08T22:20:04.000000Z",
+        "user": {
+            "id": 201897894,
+            "name": "Jack Young"
+        }
+    },
+    {
+        "id": 200575784,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 1,
+        "text": " &middot;  Lead / Onsight. ",
+        "createdAt": "2025-03-08T22:42:59.000000Z",
+        "updatedAt": "2025-03-08T22:42:59.000000Z",
+        "user": {
+            "id": 200567774,
+            "name": "Sneha Inguva"
+        }
+    },
+    {
+        "id": 200576335,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Redpoint",
+        "pitches": 1,
+        "text": " &middot;  Lead / Redpoint. ",
+        "createdAt": "2025-03-08T23:56:22.000000Z",
+        "updatedAt": "2025-03-08T23:56:22.000000Z",
+        "user": {
+            "id": 112224337,
+            "name": "Dana Taylor"
+        }
+    },
+    {
+        "id": 200575550,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 1,
+        "text": " &middot;  Lead / Onsight. ",
+        "createdAt": "2025-03-08T22:03:42.000000Z",
+        "updatedAt": "2025-03-08T22:03:42.000000Z",
+        "user": {
+            "id": 200567774,
+            "name": "Sneha Inguva"
+        }
+    },
+    {
+        "id": 200576330,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 1,
+        "text": " &middot;  Lead / Onsight. ",
+        "createdAt": "2025-03-08T23:55:48.000000Z",
+        "updatedAt": "2025-03-08T23:55:48.000000Z",
+        "user": {
+            "id": 112224337,
+            "name": "Dana Taylor"
+        }
+    },
+    {
+        "id": 200546193,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Onsight",
+        "pitches": 1,
+        "text": " &middot;  Lead / Onsight. First bolt is loose. Solid climb otherwise ",
+        "createdAt": "2025-03-01T23:38:59.000000Z",
+        "updatedAt": "2025-03-01T23:38:59.000000Z",
+        "user": {
+            "id": 202003480,
+            "name": "Anonymous"
+        }
+    },
+    {
+        "id": 200594495,
+        "date": "Mar 11, 2025, 12:00 am",
+        "comment": null,
+        "style": "",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot; Tr solo\nTook a sec to figure out\n4th bolt go left, lock r crimp to waist to reach “mono” hole then grab good holds ",
+        "createdAt": "2025-03-11T20:34:37.000000Z",
+        "updatedAt": "2025-03-11T20:34:37.000000Z",
+        "user": {
+            "id": 106740073,
+            "name": "WadeM"
+        }
+    },
+    {
+        "id": 200594866,
+        "date": "Mar 11, 2025, 12:00 am",
+        "comment": null,
+        "style": "",
+        "leadStyle": "",
+        "pitches": 2,
+        "text": " &middot; 2 pitches. Tr solo",
+        "createdAt": "2025-03-11T21:32:26.000000Z",
+        "updatedAt": "2025-03-11T21:32:26.000000Z",
+        "user": {
+            "id": 106740073,
+            "name": "WadeM"
+        }
+    },
+    {
+        "id": 200547640,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "TR",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  TR. ",
+        "createdAt": "2025-03-02T01:34:57.000000Z",
+        "updatedAt": "2025-03-02T01:34:57.000000Z",
+        "user": {
+            "id": 201265558,
+            "name": "Tiffany Callaway"
+        }
+    },
+    {
+        "id": 200594178,
+        "date": "Mar 11, 2025, 12:00 am",
+        "comment": null,
+        "style": "Solo",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  Solo. Is fs to access anchors. Fairly easy and straight forward. Block on top of anchors not inspiring but head slightly left to avoid ",
+        "createdAt": "2025-03-11T19:29:09.000000Z",
+        "updatedAt": "2025-03-11T19:29:09.000000Z",
+        "user": {
+            "id": 106740073,
+            "name": "WadeM"
+        }
+    },
+    {
+        "id": 200594240,
+        "date": "Mar 11, 2025, 12:00 am",
+        "comment": null,
+        "style": "",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot; Tr solo\nFun!",
+        "createdAt": "2025-03-11T19:44:21.000000Z",
+        "updatedAt": "2025-03-11T19:44:21.000000Z",
+        "user": {
+            "id": 106740073,
+            "name": "WadeM"
+        }
+    },
+    {
+        "id": 200594871,
+        "date": "Mar 11, 2025, 12:00 am",
+        "comment": null,
+        "style": "",
+        "leadStyle": "",
+        "pitches": 2,
+        "text": " &middot; 2 pitches. Tr solo",
+        "createdAt": "2025-03-11T21:33:05.000000Z",
+        "updatedAt": "2025-03-11T21:33:05.000000Z",
+        "user": {
+            "id": 106740073,
+            "name": "WadeM"
+        }
+    },
+    {
+        "id": 200576045,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "TR",
+        "leadStyle": "",
+        "pitches": 1,
+        "text": " &middot;  TR. Climbed it wohoo! Top ropes on a very cold day! Wanna come back and lead it!",
+        "createdAt": "2025-03-08T23:21:35.000000Z",
+        "updatedAt": "2025-03-08T23:21:35.000000Z",
+        "user": {
+            "id": 200567774,
+            "name": "Sneha Inguva"
+        }
+    },
+    {
+        "id": 200576328,
+        "date": "Mar 8, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Redpoint",
+        "pitches": 1,
+        "text": " &middot;  Lead / Redpoint. ",
+        "createdAt": "2025-03-08T23:55:30.000000Z",
+        "updatedAt": "2025-03-08T23:55:30.000000Z",
+        "user": {
+            "id": 112224337,
+            "name": "Dana Taylor"
+        }
+    },
+    {
+        "id": 200546788,
+        "date": "Mar 1, 2025, 12:00 am",
+        "comment": null,
+        "style": "Lead",
+        "leadStyle": "Pinkpoint",
+        "pitches": 1,
+        "text": " &middot;  Lead / Pinkpoint. ",
+        "createdAt": "2025-03-02T00:26:18.000000Z",
+        "updatedAt": "2025-03-02T00:26:18.000000Z",
+        "user": {
+            "id": 201265558,
+            "name": "Tiffany Callaway"
+        }
+    }
+]

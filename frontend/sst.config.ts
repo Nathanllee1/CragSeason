@@ -16,6 +16,10 @@ export default {
       stack.addOutputs({
         url: site.url,
       });
+
+      const handler = site.getFunctionBinding()
     });
+
+    
   },
 } satisfies SSTConfig;

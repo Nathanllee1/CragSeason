@@ -1,0 +1,4 @@
+data/*.json filter=lfs diff=lfs merge=lfs -text
+frontend/static/kv/data.kv filter=lfs diff=lfs merge=lfs -text
+frontend/static/data.kv filter=lfs diff=lfs merge=lfs -text
+sqlite/*.db filter=lfs diff=lfs merge=lfs -text

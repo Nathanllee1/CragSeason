@@ -1,7 +1,7 @@
-<div class="lg:visible absolute z-20 mt-20 bg-base-200 ml-[3vh] rounded-xl w-[200px] p-3">
+<div class="lg:visible absolute z-10 mt-16 lg:mt-20 bg-base-300 lg:ml-[3vh] lg:rounded-xl rounded-br-xl w-[200px] p-3">
     <div class="bg-gradient-to-r from-[#EB4034] to-[#00D5FF] w-full h-2 rounded"></div>
     <div class="flex justify-between">
-        <div>Sumer</div>
+        <div>Summer</div>
         <div>Winter</div>
     </div>
 </div>

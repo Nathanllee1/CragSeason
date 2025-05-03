@@ -1,19 +1,23 @@
-export type mp = {
-    url: string
-} & ({
+export type MPNotLoaded = {
     loaded: false
-} | ({
-    loaded: true,
+    url: string
+}
+
+export type MPClimb = {
+    loaded: true
+    routeType: "climb"
     name: string
-} & (area | climb)))
+    url: string
+    ticks: string[]
+}
 
-type area = {
-    routeType: "area",
+export type MPArea = {
+    loaded: true
+    routeType: "area"
+    name: string
+    url: string
+    coordinates: [number, number]
     areas: mp[]
-    coordinates: [number, number],
 }
 
-type climb = {
-    routeType: "climb",
-    ticks: string[] // A list of dates
-}
+export type mp = MPNotLoaded | MPClimb | MPArea

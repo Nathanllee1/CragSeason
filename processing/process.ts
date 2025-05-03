@@ -11,7 +11,8 @@ export type mpCondensed = {
     totalTicks: number,
     seasonMetric: number,
     coordinates: [number, number],
-    name: string
+    name: string,
+    scaling: number[]
 }
 
 
@@ -34,7 +35,7 @@ const customMonthWeights = [
 const meterThreshold = 10000
 type location = { latitude: number, longitude: number }
 
-const childrenCloseBy = (parentLocation: GeolibInputCoordinates, childLocations: GeolibInputCoordinates[]) => {
+export const childrenCloseBy = (parentLocation: GeolibInputCoordinates, childLocations: GeolibInputCoordinates[], meterThreshold: number) => {
 
     for (const childLocation of childLocations) {
         if (getDistance(childLocation, parentLocation) > meterThreshold) {
@@ -79,6 +80,29 @@ function calculateSeasonMetric(ticksByMonth: number[]): number {
     return parseFloat((weightedSum / totalTicks).toFixed(2))
 }
 
+export function computePointSize(
+    monthTicks: number[],
+    currentMonth: number,
+    monthScaleFactor: number = 10,
+    totalTicksScaleFactor: number = 1
+  ): number {
+    // Get the ticks for the current month
+    const currentMonthTicks = monthTicks[currentMonth];
+  
+    // Calculate the total ticks over all months
+    const totalTicks = monthTicks.reduce((acc, ticks) => acc + ticks, 0);
+  
+    // Compute the proportion of ticks for the current month relative to the total
+    const monthProportion = currentMonthTicks / totalTicks;
+  
+    // Scale the size value based on the month proportion and the total number of ticks
+    const pointSize =
+      monthProportion * monthScaleFactor + totalTicks * totalTicksScaleFactor;
+  
+    // Ensure a minimum size to make sure points are visible even if proportion is low
+    return parseFloat((Math.max(pointSize, 1)).toFixed(2));  // Min size of 1 to ensure visibility
+}
+
 const extractAreas = (data: mp): mpCondensed[] => {
 
     if (!data.loaded || data.routeType === "climb") {
@@ -93,7 +117,7 @@ const extractAreas = (data: mp): mpCondensed[] => {
         return area.coordinates
     }).filter(area => area) as GeolibInputCoordinates[]
 
-    if (childrenCloseBy(data.coordinates as GeolibInputCoordinates, childcoordinates)) {
+    if (childrenCloseBy(data.coordinates as GeolibInputCoordinates, childcoordinates, meterThreshold)) {
 
         const tickList = getTicks(data)
 
@@ -107,13 +131,19 @@ const extractAreas = (data: mp): mpCondensed[] => {
             monthTicks[tick.getMonth()]++;
         })
 
+        let scaling = []
+        for (let i = 0; i < 12; i++) {
+            scaling.push(computePointSize(monthTicks, i))
+        }
+
         return [{
             monthTicks,
             totalTicks: tickList.length,
             url: data.url.split("/").slice(-2).join("/"),
             seasonMetric: calculateSeasonMetric(monthTicks),
             coordinates: data.coordinates,
-            name: data.name
+            name: data.name,
+            scaling
         }]
     }
 
@@ -147,7 +177,7 @@ function generateGeoJSONFeatures(climbingAreas: mpCondensed[]): any {
     return features;
 }
 
-const outputPath = "frontend/static/all.geojson"
+const outputPath = "frontend/static/all2.geojson"
 
 const processFile = async (dataPath: string) => {
     const data = await loadJsonFromFile(dataPath);
@@ -170,6 +200,7 @@ async function main() {
     // await appendFile(outputPath, `{"type": "FeatureCollection", "features":[`)
     let features: any[] = []
     for (const file of files) {
+        console.log("Processing", file)
         features.push(await processFile(join("data", file)))
     }
     

@@ -10,11 +10,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@msgpack/msgpack": "^3.1.1",
     "@types/cheerio": "^0.22.31",
     "@types/node": "^20.5.1",
+    "better-sqlite3": "^11.7.2",
     "chart.js": "^4.4.0",
     "cheerio": "^1.0.0-rc.12",
     "geolib": "^3.3.4",
     "svelte-chartjs": "^3.1.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12"
   }
 }

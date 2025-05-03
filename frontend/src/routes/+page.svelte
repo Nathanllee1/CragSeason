@@ -5,9 +5,12 @@
 
     import { currentPoint } from "$lib";
     import Info from "./info.svelte";
-    import { mapStore } from "$lib/map";
+    import { fetchPoints, insertRelativeSizes, mapStore } from "$lib/map";
     import mapboxgl from "mapbox-gl";
     import Legend from "./legend.svelte";
+    import Help from "./help.svelte";
+
+    export let data;
 
     onMount(async () => {
         if (!browser) {
@@ -19,34 +22,24 @@
         const map = new mapboxgl.Map({
             container: "mapboxMap",
             style: "mapbox://styles/nathanllee1/clkxnzl9o003201pu43ho3cxu",
+            center: [-122.09653, 37.22977],
+            zoom: 3,
         });
 
-        mapStore.createMap(map);
+        const pointsWithSeasonScaling = insertRelativeSizes(data.props.points);
+
+        console.log(pointsWithSeasonScaling);
+
+        await mapStore.createMap(map, pointsWithSeasonScaling);
     });
 </script>
-
-<div class="absolute z-10 w-screen bg-base-100 navbar">
-    <div class="flex-1 gap-2 align-baseline">
-        <h1 class="text-2xl font-extrabold text-primary">Crag Season</h1>
-        <div class="self-auto mt-1 hidden lg:block">
-            View what season people climb
-        </div>
-    </div>
-
-    <div class="font-light text-sm flex-none block">
-        Data sourced from <a
-            class="link"
-            href="https://www.mountainproject.com/">Mountain Project</a
-        > ticks
-    </div>
-</div>
 
 <Legend />
 
 {#if $currentPoint && $currentPoint.properties}
     <Info />
 {/if}
-<div id="mapboxMap" class="h-screen w-screen" />
+<div id="mapboxMap" class="h-[100dvh] w-screen" />
 
 <style>
 </style>

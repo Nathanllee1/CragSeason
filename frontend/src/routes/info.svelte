@@ -113,7 +113,7 @@
                 
                 <a
                 class="btn btn-primary"
-                    href={`/area/${$currentPoint.properties?.url.split("/").slice(-2)[0]}`}
+                    href={`/area/${$currentPoint.properties?.url}`}
                     >See more details</a
                 >
             

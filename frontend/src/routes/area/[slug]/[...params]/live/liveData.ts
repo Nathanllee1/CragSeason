@@ -8,6 +8,7 @@ import { tick } from "svelte";
 import ms from "ms"
 import { batcher } from "$lib/batcher";
 import { sleep } from "$lib";
+import { load } from "cheerio";
 
 type LiveData = {
     tickData: Tick[];
@@ -50,13 +51,24 @@ function liveDataStore() {
 
     }
 
+    let cancelFlag = false;
+
     return {
         subscribe,
         set,
         update,
-        initialize: async (id: string, data: rootAreaInfo[], loadFromScratch = false) => {
+        cancel: () => {
+            cancelFlag = true;
+            setStoreProperty("fetchingData", false);
+            console.log("Cancelled");
 
             set(defaultStore)
+        },
+        initialize: async (id: string, data: rootAreaInfo[], loadFromScratch = false) => {
+            cancelFlag = false;
+            set(defaultStore)
+
+            console.log("Initializing live data store...", {cancelFlag, loadFromScratch})   
 
             setStoreProperty("status", "Loading Ticks")
 
@@ -76,6 +88,11 @@ function liveDataStore() {
 
             const jobs = data.map((climb, idx) => {
                 return async () => {
+                    console.log("Fetching ticks for climb:", climb.name, {cancelFlag})
+                    if (cancelFlag) {
+                        return;
+                    }
+
                     setStoreProperty("status", `Loading Ticks for ${climb.name}...`)
 
                     const progress = Math.floor((idx / data.length) * 100);
@@ -112,12 +129,16 @@ function liveDataStore() {
                         return storeData;
                     })
 
+                    if (cancelFlag) {
+                        return;
+                    }
+
                 }
                 
             })
 
 
-            await batcher(jobs, 5);
+            await batcher(jobs, 2);
 
             setStoreProperty("fetchingData", false)
 

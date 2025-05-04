@@ -36,7 +36,7 @@
             <br>
 
             <div
-                class="bg-gradient-to-r from-[#EB4034] to-[#00D5FF] w-full h-2 rounded"
+                class="bg-linear-to-r from-[#EB4034] to-[#00D5FF] w-full h-2 rounded-sm"
             />
             <div class="flex justify-between">
                 <div>Summer</div>
@@ -80,7 +80,7 @@
             <button class="btn btn-primary">Explore!</button>
         </form>
     </div>
-    <form method="dialog" class="modal-backdrop backdrop-blur-sm">
+    <form method="dialog" class="modal-backdrop backdrop-blur-xs">
         <button>close</button>
     </form>
 </dialog>

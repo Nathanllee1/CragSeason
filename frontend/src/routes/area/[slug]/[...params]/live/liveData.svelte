@@ -36,7 +36,7 @@
     });
 </script>
 
-<div class="h-16 grid">
+<div class="h-16 grid mb-4">
     {#if $liveStore.fetchingData}
         <div out:fade class="col-start-1 col-end-2 row-start-1 row-end-2">
             <br />

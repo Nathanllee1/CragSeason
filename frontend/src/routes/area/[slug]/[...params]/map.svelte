@@ -151,4 +151,4 @@
 </div>
 
 <!-- Map -->
-<div id="historicalMap" class="h-96 w-full rounded-lg shadow" />
+<div id="historicalMap" class="h-96 w-full rounded-lg shadow-sm" />

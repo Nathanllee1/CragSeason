@@ -17,9 +17,12 @@
     "chart.js": "^4.4.0",
     "cheerio": "^1.0.0-rc.12",
     "geolib": "^3.3.4",
+    "https-proxy-agent": "^5.0.1",
+    "node-fetch": "^2.7.0",
     "svelte-chartjs": "^3.1.2"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12"
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node-fetch": "^2.6.12"
   }
 }

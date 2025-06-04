@@ -1,7 +1,5 @@
 // Core scraping logic.  Each function mirrors a Mountain Project API endpoint
 // and stores the resulting data in SQLite using helpers from `db.ts`.
-import fs from 'fs';
-import path from 'path';
 import fetch from 'node-fetch';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import {
@@ -79,6 +77,10 @@ export type RootArea = { id: number };
 // keep it simple and avoid parsing another file.
 import rootAreas from './rootAreas';
 
+// Rate limit to be kind to the API: max 4 requests per second
+const RATE_LIMIT_MS = 250;
+let lastRequestTime = 0;
+
 export function parseRootAreas(): RootArea[] {
   return rootAreas.map(id => ({ id }));
 }
@@ -95,6 +97,16 @@ async function fetchJson<T>(url: string, attempt = 0): Promise<T> {
   }
 
   const MAX_RETRIES = 5;
+
+  // rate limiting
+  const now = Date.now();
+  const wait = RATE_LIMIT_MS - (now - lastRequestTime);
+  if (wait > 0) {
+    await new Promise(r => setTimeout(r, wait));
+  }
+  lastRequestTime = Date.now();
+  requestCount++;
+
   const res = await fetch(url, options).catch(err => {
     if (attempt < MAX_RETRIES) return null;
     throw err;
@@ -128,8 +140,8 @@ export function setMaxRequests(v: number) {
  * visited depth-first.
  */
 export async function processArea(id: number, parentId: number | null): Promise<void> {
+  if (selectArea.get(id)) return; // already processed
   if (requestCount >= MAX_REQUESTS) return;
-  requestCount++;
   const url = `https://www.mountainproject.com/api/v2/areas/${id}`;
   let data: AreaApi;
   try {
@@ -176,8 +188,8 @@ export async function processArea(id: number, parentId: number | null): Promise<
  * download all tick history for that route.
  */
 export async function processRoute(id: number, areaId: number): Promise<void> {
+  if (selectRoute.get(id)) return; // already processed
   if (requestCount >= MAX_REQUESTS) return;
-  requestCount++;
   const url = `https://www.mountainproject.com/api/v2/routes/${id}`;
   let data: RouteApi;
   try {
@@ -220,7 +232,6 @@ export async function processTicks(routeId: number): Promise<void> {
   let page = 1;
   while (true) {
     if (requestCount >= MAX_REQUESTS) return;
-    requestCount++;
     const url = `https://www.mountainproject.com/api/v2/routes/${routeId}/ticks?page=${page}`;
     let json: any;
     try {

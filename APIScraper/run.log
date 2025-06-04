@@ -1,4 +1,2 @@
-npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
-Areas: 18
-Routes: 95
-Ticks: 9838
+Completed. Total requests: 100
+Areas: 4, Routes: 46, Ticks: 5258

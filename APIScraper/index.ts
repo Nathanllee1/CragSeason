@@ -5,8 +5,6 @@ import * as scraper from './scraper';
 import sqlite3 from 'better-sqlite3';
 
 init();
-// Limit requests during CI runs so the script completes quickly.
-scraper.setMaxRequests(parseInt(process.env.MAX_REQUESTS || '100', 10));
 
 async function main() {
   const roots = scraper.parseRootAreas();

@@ -1,0 +1,24 @@
+diff --git a/node_modules/sveltekit-top-loader/dist/SvelteKitTopLoader.svelte b/node_modules/sveltekit-top-loader/dist/SvelteKitTopLoader.svelte
+index bcae9ad..643dc13 100644
+--- a/node_modules/sveltekit-top-loader/dist/SvelteKitTopLoader.svelte
++++ b/node_modules/sveltekit-top-loader/dist/SvelteKitTopLoader.svelte
+@@ -1,9 +1,9 @@
+ <script lang="ts">
+-	import { run } from 'svelte/legacy';
+ 
+ 	import { afterNavigate, beforeNavigate } from '$app/navigation';
+ 	import nProgress from 'nprogress';
+ 	import { onMount } from 'svelte';
++	import { derived } from 'svelte/store';
+ 
+ 	interface Props {
+ 		/**
+@@ -113,7 +113,7 @@
+ 		};
+ 	});
+ 
+-	run(() => {
++	onMount(() => {
+ 		if (styleElement) {
+ 			styleElement.textContent = styles;
+ 		}

@@ -39,7 +39,9 @@
 {#if $currentPoint && $currentPoint.properties}
     <Info />
 {/if}
-<div id="mapboxMap" class="h-[100dvh] w-screen" />
-
+<div id="mapboxMap"
+     class="w-full"
+     style="height: calc(100dvh);">  <!-- 4 rem = h-16 navbar -->
+</div>
 <style>
 </style>

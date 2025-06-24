@@ -2,3 +2,6 @@ node_modules
 frontend/.sst/
 dist
 APIScraper/*.db
+*.vars
+*.sql
+*.db

@@ -1,15 +1,15 @@
 import type { AreaPayload, IndexEntry, rootAreaInfo } from "./kvTypes";
-
+import index from "$lib/index.json"
 
 export class KV {
 
     index: Record<string, IndexEntry> = {};
-    dataFileUrl: string = "/kv/data.kv"; 
+    dataFileUrl: string = "/kv/data.kv";
     indexFileUrl: string = "/kv/index.json";
     hashUrl: string = "/kv/data.kv.hash";
 
     async init() {
-
+        /*
         // check if local storage has a cached index
         const index = localStorage.getItem("index");
         const hash = localStorage.getItem("indexHash");
@@ -40,23 +40,27 @@ export class KV {
         this.index = data;
 
         localStorage.setItem("index", JSON.stringify(data));
+        */
+        this.index = index;
     }
 
-    async get(key: string): Promise< AreaPayload| null> {
+    async get(key: string, fetch: any, origin: string): Promise<AreaPayload | null> {
         if (!this.index[key]) {
             console.log("Key not found in index", key);
             return null;
         }
 
         const { o: offset, l: length } = this.index[key];
-        const rangeHeader = `bytes=${offset}-${offset + length - 1}`;
 
-        const response = await fetch(this.dataFileUrl, {
-            headers: { Range: rangeHeader }
+        const rangeHeader = `bytes=${offset}-${offset + length - 1}`;
+        const response = await globalThis.fetch(`${origin}${this.dataFileUrl}`, {
+            headers: { Range: rangeHeader, "Accept-Encoding": "identify" }
         });
+
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
 
         const json = await response.json()// await response.json();
 

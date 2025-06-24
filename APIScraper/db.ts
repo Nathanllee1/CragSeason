@@ -98,8 +98,30 @@ INSERT INTO sections (parent_type, parent_id, title, html) VALUES (@parent_type,
 export const insertTick = db.prepare(`
 INSERT OR REPLACE INTO ticks (id, route_id, date, comment, style, leadStyle, pitches, text, createdAt, updatedAt, user_id, user_name)
 VALUES (@id, @route_id, @date, @comment, @style, @leadStyle, @pitches, @text, @createdAt, @updatedAt, @user_id, @user_name)`);
+type TickRow = Parameters<typeof insertTick.run>[0];   // 👈 first (and only) arg to .run()
+
+export const insertTicksMany = db.transaction((rows: TickRow[]) => {
+  for (const row of rows) insertTick.run(row);
+});
 
 // Simple existence checks used to avoid re-downloading data on subsequent runs.
 export const selectArea = db.prepare('SELECT 1 FROM areas WHERE id = ?');
 export const selectRoute = db.prepare('SELECT 1 FROM routes WHERE id = ?');
 
+export const hasChildAreas = db.prepare(
+  'SELECT 1 FROM areas  WHERE parent_id = ? LIMIT 1'
+);
+
+/** “Does this area already have child routes?” */
+export const hasChildRoutes = db.prepare(
+  'SELECT 1 FROM routes WHERE area_id  = ? LIMIT 1'
+);
+
+/** “Does this route already have at least one tick row?” */
+export const hasTicks = db.prepare(
+  'SELECT 1 FROM ticks  WHERE route_id = ? LIMIT 1'
+);
+
+export const selectAreaLeaf = db.prepare(
+  'SELECT is_leaf FROM areas WHERE id = ?'
+);

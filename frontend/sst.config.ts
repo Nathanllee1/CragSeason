@@ -11,13 +11,13 @@ export default {
   stacks(app) {
     app.stack(function Site({ stack }) {
       const site = new SvelteKitSite(stack, "site", {
-        customDomain: "cragseason.com"
+        customDomain: "cragseason.com",
+        
       });
       stack.addOutputs({
         url: site.url,
       });
 
-      const handler = site.getFunctionBinding()
     });
 
     

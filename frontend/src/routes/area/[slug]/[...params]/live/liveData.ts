@@ -10,13 +10,23 @@ import { batcher } from "$lib/batcher";
 import { sleep } from "$lib";
 import { load } from "cheerio";
 
-type LiveData = {
-    tickData: Tick[];
+type HistoricalTick = {
+    type: "historical",
+    tick: string
+}
+
+export type CombinedTick = HistoricalTick | {
+    type: "live",
+    tick: Tick
+}
+
+export type LiveData = {
+    tickData: CombinedTick[];
     climbData: rootAreaInfo;
 }
 
 type TLiveDataStore = {
-    ticks: LiveData[],
+    ticks: Record<string, LiveData>,
     status: string,
     isLoaded: boolean,
     lastUpdated: Date,
@@ -28,18 +38,20 @@ const LIVE_DB_NAME = "liveData";
 
 export const liveStore = liveDataStore()
 
-function liveDataStore() {
-
-    const defaultStore = {
-        ticks: [],
+function makeDefaultStore(): TLiveDataStore {
+    return {
+        ticks: {},
         status: "",
         isLoaded: false,
         lastUpdated: new Date(),
         fetchingData: false,
         progress: 0
-    }
+    };
+}
 
-    const { set, subscribe, update } = writable<TLiveDataStore>(defaultStore);
+function liveDataStore() {
+
+    const { set, subscribe, update } = writable<TLiveDataStore>(makeDefaultStore());
 
     function setStoreProperty<T extends keyof TLiveDataStore>(property: T, value: TLiveDataStore[T]) {
 
@@ -52,6 +64,12 @@ function liveDataStore() {
     }
 
     let cancelFlag = false;
+    let controller = new AbortController();
+
+    function updateArea(newTicks: Tick[]) {
+
+    }
+
 
     return {
         subscribe,
@@ -59,16 +77,37 @@ function liveDataStore() {
         update,
         cancel: () => {
             cancelFlag = true;
-            setStoreProperty("fetchingData", false);
+
             console.log("Cancelled");
 
-            set(defaultStore)
-        },
-        initialize: async (id: string, data: rootAreaInfo[], loadFromScratch = false) => {
-            cancelFlag = false;
-            set(defaultStore)
+            controller.abort();
 
-            console.log("Initializing live data store...", {cancelFlag, loadFromScratch})   
+            set(makeDefaultStore())
+        },
+        clear: () => {
+            set(makeDefaultStore())
+        },
+        setBaseData: (data: rootAreaInfo[]) => {
+
+            for (const area of data) {
+
+                const historicalTick = area.ticks.map(tick => ({ type: "historical", tick })) as CombinedTick[]
+
+                update((store) => {
+                    store.ticks[area.id] = {
+                        climbData: area,
+                        tickData: historicalTick,
+                    }
+
+                    return store;
+                })
+            }
+
+        },
+        getLiveData: async (id: string, data: rootAreaInfo[], loadFromScratch = false) => {
+            cancelFlag = false;
+
+            controller = new AbortController();
 
             setStoreProperty("status", "Loading Ticks")
 
@@ -82,13 +121,23 @@ function liveDataStore() {
                 console.log("CLearing")
                 await idDB.clear();
 
-                setStoreProperty("ticks", [])
+
+                setStoreProperty("ticks", {})
                 setStoreProperty("isLoaded", false)
+
+                liveStore.setBaseData(data)
+
             }
 
             const jobs = data.map((climb, idx) => {
                 return async () => {
-                    console.log("Fetching ticks for climb:", climb.name, {cancelFlag})
+
+                    if (controller.signal.aborted) {
+                        console.log("Aborted");
+                        return;
+                    }
+
+                    // console.log("Fetching ticks for climb:", climb.name, {cancelFlag})
                     if (cancelFlag) {
                         return;
                     }
@@ -102,17 +151,22 @@ function liveDataStore() {
 
                     if (existingResult) {
                         update((storeData) => {
-                            storeData.ticks.push({
-                                tickData: existingResult,
-                                climbData: climb
-                            })
+                            const tickObj = storeData.ticks[climb.id]
+                            console.log(tickObj)
+                            if (!tickObj) {
+                                return storeData;
+                            }
+
+                            const combinedTicks = combineTicks(tickObj.tickData as HistoricalTick[], existingResult)
+
+                            storeData.ticks[climb.id].tickData = combinedTicks;
 
                             return storeData;
                         })
 
                         return;
                     }
-                    
+
                     setStoreProperty("fetchingData", true)
 
 
@@ -121,12 +175,19 @@ function liveDataStore() {
 
 
                     update((storeData) => {
-                        storeData.ticks.push({
-                            tickData: recentTicks,
-                            climbData: climb
-                        })
+
+                        const tickObj = storeData.ticks[climb.id]
+
+                        if (!tickObj) {
+                            return storeData;
+                        }
+
+                        const combinedTicks = combineTicks(tickObj.tickData as HistoricalTick[], recentTicks)
+
+                        storeData.ticks[climb.id].tickData = combinedTicks;
 
                         return storeData;
+
                     })
 
                     if (cancelFlag) {
@@ -134,7 +195,7 @@ function liveDataStore() {
                     }
 
                 }
-                
+
             })
 
 
@@ -147,16 +208,35 @@ function liveDataStore() {
             await idDB.set("lastUpdated", Date.now());
 
             setStoreProperty("progress", 100)
+            setStoreProperty("lastUpdated", new Date())
 
         }
     }
 
 }
 
+function combineTicks(historical: HistoricalTick[], live: Tick[]): CombinedTick[] {
+    historical.sort((a, b) => new Date(a.tick).getTime() - new Date(b.tick).getTime())
+    const lastDateString = historical.at(-1) ?? '';
+
+    const lastDate = lastDateString ? new Date(lastDateString).getTime() : 0;
+
+    const fullTicks: CombinedTick[] = historical;
+
+    for (const liveTick of live) {
+        fullTicks.push({
+            type: "live",
+            tick: liveTick
+        })
+    }
+
+    return fullTicks;
+
+}
+
 async function getTick(climb: rootAreaInfo): Promise<Tick[]> {
     const tickURL = `https://www.mountainproject.com/api/v2/routes/${climb.id}/ticks?per_page=250&page=1`;
-    
-    await tick();
+
     const res = await fetch(tickURL);
 
     if (!res.ok) {
@@ -175,7 +255,7 @@ async function getTick(climb: rootAreaInfo): Promise<Tick[]> {
         const tickDate = new Date(tick.date);
         const now = new Date();
         const diffTime = Math.abs(now.getTime() - tickDate.getTime());
-        
+
         return diffTime < ms("30 days")
     });
 

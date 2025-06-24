@@ -5,12 +5,16 @@ function getCurrentArea(slug: string) {
 
 }
 
-export const load: LayoutLoad = async (data) => {
+
+
+export const load: LayoutLoad = async ({params, fetch, url}) => {
     
     const kv = new KV();
     await kv.init();
-    const areaId = data.params.slug;
-    const areaInfo = await kv.get(areaId);
+    const areaId = params.slug;
+    console.time()
+    const areaInfo = await kv.get(areaId, fetch, url.origin);
+    console.timeEnd()
 
     return {
         id: areaId,

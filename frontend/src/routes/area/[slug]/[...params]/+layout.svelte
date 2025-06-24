@@ -9,15 +9,16 @@
 
     export let data;
     function init() {
+        console.log("Navigating!")
         if (!data.areaInfo) {
             return;
         }
 
         liveStore.cancel();
-        liveStore.initialize(data.id, data.areaInfo.areas)
+        liveStore.setBaseData(data.areaInfo.areas)
+        liveStore.getLiveData(data.id, data.areaInfo.areas)
     }
-
-    onMount(init);
+    // onMount(() => liveStore.clear())
     afterNavigate(init);
 
 

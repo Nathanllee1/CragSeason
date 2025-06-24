@@ -8,7 +8,12 @@ import {
   insertSection,
   insertTick,
   selectArea,
-  selectRoute
+  selectRoute,
+  hasChildAreas,
+  hasChildRoutes,
+  hasTicks,
+  selectAreaLeaf,
+  insertTicksMany
 } from './db';
 
 export interface AreaChild {
@@ -78,7 +83,7 @@ export type RootArea = { id: number };
 import rootAreas from './rootAreas';
 
 // Rate limit to be kind to the API: max 4 requests per second
-const RATE_LIMIT_MS = 250;
+const RATE_LIMIT_MS = 0;
 let lastRequestTime = 0;
 
 export function parseRootAreas(): RootArea[] {
@@ -91,6 +96,9 @@ export function parseRootAreas(): RootArea[] {
 // transient errors.
 async function fetchJson<T>(url: string, attempt = 0): Promise<T> {
   const proxy = process.env.http_proxy || process.env.HTTP_PROXY;
+
+  console.log("Scraping", url)
+
   const options: any = {};
   if (proxy) {
     options.agent = new HttpsProxyAgent(proxy);
@@ -129,7 +137,7 @@ async function fetchJson<T>(url: string, attempt = 0): Promise<T> {
 }
 
 let requestCount = 0;
-export let MAX_REQUESTS = 100000;
+export let MAX_REQUESTS = 1000000;
 export function setMaxRequests(v: number) {
   MAX_REQUESTS = v;
 }
@@ -140,47 +148,61 @@ export function setMaxRequests(v: number) {
  * visited depth-first.
  */
 export async function processArea(id: number, parentId: number | null): Promise<void> {
-  if (selectArea.get(id)) return; // already processed
-  if (requestCount >= MAX_REQUESTS) return;
-  const url = `https://www.mountainproject.com/api/v2/areas/${id}`;
-  let data: AreaApi;
-  try {
-    data = await fetchJson<AreaApi>(url);
-  } catch {
+  const leafRow = selectAreaLeaf.get(id) as { is_leaf?: number } | undefined;
+  const areaExists = !!leafRow;
+
+  /* If the row exists AND either it is a leaf or we already have children,
+     we assume this subtree is finished and skip network work. */
+  if (
+    areaExists &&
+    (
+      leafRow!.is_leaf === 1 ||
+      hasChildAreas.get(id) ||
+      hasChildRoutes.get(id)
+    )
+  ) {
     return;
   }
 
-  if (!selectArea.get(id)) {
-    insertArea.run({
-      id: data.id,
-      title: data.title,
-      parent_id: parentId,
-      package_id: data.package_id,
-      breadcrumbs: data.breadcrumbs,
-      is_leaf: data.is_leaf ? 1 : 0,
-      url: data.url,
-      lat: data.coordinates[1] || null,
-      lon: data.coordinates[0] || null,
-      radius: data.radius,
-      summary: data.summary,
-      rating: data.rating,
-      popularity: data.popularity,
-      depth: data.depth,
-      submitted_by: data.submitted_by
-    });
-    for (const s of data.sections) {
-      insertSection.run({ parent_type: 'area', parent_id: data.id, title: s.title, html: s.html });
-    }
+  if (requestCount >= MAX_REQUESTS) return;
+
+  const url = `https://www.mountainproject.com/api/v2/areas/${id}`;
+  let data: AreaApi;
+  try { data = await fetchJson<AreaApi>(url); }
+  catch { return; }
+
+  /* Insert (or replace) parent row once, same as before */
+  insertArea.run({
+    id: data.id,
+    title: data.title,
+    parent_id: parentId,
+    package_id: data.package_id,
+    breadcrumbs: data.breadcrumbs,
+    is_leaf: data.is_leaf ? 1 : 0,
+    url: data.url,
+    lat: data.coordinates[1] || null,
+    lon: data.coordinates[0] || null,
+    radius: data.radius,
+    summary: data.summary,
+    rating: data.rating,
+    popularity: data.popularity,
+    depth: data.depth,
+    submitted_by: data.submitted_by
+  });
+  for (const s of data.sections) {
+    insertSection.run({ parent_type: 'area', parent_id: data.id, title: s.title, html: s.html });
   }
 
+  /* Now descend */
   for (const child of data.children) {
     if (child.type === 'Area') {
       await processArea(child.id, data.id);
-    } else if (child.type === 'Route') {
+    } else {
       await processRoute(child.id, data.id);
     }
   }
 }
+
 
 /**
  * Fetch detailed information for a single route and insert it if we haven't
@@ -188,50 +210,47 @@ export async function processArea(id: number, parentId: number | null): Promise<
  * download all tick history for that route.
  */
 export async function processRoute(id: number, areaId: number): Promise<void> {
-  if (selectRoute.get(id)) return; // already processed
+  const already = selectRoute.get(id);
+
+  /* If route exists AND we already have at least one tick, assume done. */
+  if (already && hasTicks.get(id)) return;
   if (requestCount >= MAX_REQUESTS) return;
+
   const url = `https://www.mountainproject.com/api/v2/routes/${id}`;
   let data: RouteApi;
-  try {
-    data = await fetchJson<RouteApi>(url);
-  } catch {
-    return;
+  try { data = await fetchJson<RouteApi>(url); }
+  catch { return; }
+
+  insertRoute.run({
+    id: data.id,
+    area_id: areaId,
+    title: data.title,
+    package_id: data.package_id,
+    url: data.url,
+    difficulty: data.difficulty,
+    pitches: data.pitches,
+    height_feet: data.height_feet,
+    types: JSON.stringify(data.types),
+    summary: data.summary,
+    rating: data.rating,
+    popularity: data.popularity,
+    thumbnail: data.thumbnail,
+    first_ascent: data.first_ascent,
+    submitted_by: data.submitted_by
+  });
+  for (const s of data.sections) {
+    insertSection.run({ parent_type: 'route', parent_id: data.id, title: s.title, html: s.html });
   }
 
-  if (!selectRoute.get(id)) {
-    insertRoute.run({
-      id: data.id,
-      area_id: areaId,
-      title: data.title,
-      package_id: data.package_id,
-      url: data.url,
-      difficulty: data.difficulty,
-      pitches: data.pitches,
-      height_feet: data.height_feet,
-      types: JSON.stringify(data.types),
-      summary: data.summary,
-      rating: data.rating,
-      popularity: data.popularity,
-      thumbnail: data.thumbnail,
-      first_ascent: data.first_ascent,
-      submitted_by: data.submitted_by
-    });
-    for (const s of data.sections) {
-      insertSection.run({ parent_type: 'route', parent_id: data.id, title: s.title, html: s.html });
-    }
-  }
-
-  await processTicks(id);
+  await processTicks(id);   // idempotent; duplicates ignored by PRIMARY KEY
 }
 
-/**
- * Download tick history for a route.  The API is paginated, so we loop until
- * no `next_page_url` is returned.  Each tick is inserted individually.
- */
 export async function processTicks(routeId: number): Promise<void> {
   let page = 1;
+
   while (true) {
     if (requestCount >= MAX_REQUESTS) return;
+
     const url = `https://www.mountainproject.com/api/v2/routes/${routeId}/ticks?page=${page}`;
     let json: any;
     try {
@@ -239,23 +258,25 @@ export async function processTicks(routeId: number): Promise<void> {
     } catch {
       break;
     }
-    const ticks: TickApi[] = json.data || [];
-    for (const tick of ticks) {
-      insertTick.run({
-        id: tick.id,
-        route_id: routeId,
-        date: tick.date,
-        comment: tick.comment,
-        style: tick.style,
-        leadStyle: tick.leadStyle,
-        pitches: tick.pitches,
-        text: tick.text === false ? null : tick.text,
-        createdAt: tick.createdAt,
-        updatedAt: tick.updatedAt,
-        user_id: tick.user && typeof tick.user !== 'boolean' ? tick.user.id : null,
-        user_name: tick.user && typeof tick.user !== 'boolean' ? tick.user.name : null
-      });
-    }
+
+    // Build an array, then write once
+    const batch = (json.data as TickApi[] | undefined)?.map(tick => ({
+      id: tick.id,
+      route_id: routeId,
+      date: tick.date,
+      comment: tick.comment,
+      style: tick.style,
+      leadStyle: tick.leadStyle,
+      pitches: tick.pitches,
+      text: tick.text === false ? null : tick.text,
+      createdAt: tick.createdAt,
+      updatedAt: tick.updatedAt,
+      user_id: tick.user && typeof tick.user !== 'boolean' ? tick.user.id : null,
+      user_name: tick.user && typeof tick.user !== 'boolean' ? tick.user.name : null
+    })) ?? [];
+
+    if (batch.length) insertTicksMany(batch);   // 🚀 one transaction
+
     if (!json.next_page_url) break;
     page++;
   }

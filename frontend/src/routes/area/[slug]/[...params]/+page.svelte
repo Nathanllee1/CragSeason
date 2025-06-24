@@ -7,6 +7,7 @@
     import type { rootAreaInfo } from "$lib/kvTypes";
     import Map from "./map.svelte";
     import Stats from "./historical/stats.svelte";
+    import Loader from "./live/loader.svelte";
 
     export let data;
     let currentArea: FeatureProperties;
@@ -15,7 +16,13 @@
 </script>
 
 {#if data.areaInfo}
+    <Loader data={data.areaInfo.areas} id={data.id} />
 
+    <Stats historicalData={data.areaInfo.areas} />
+
+    <LiveData />
+
+    <!--
     <div class="tabs tabs-border tabs-xl">
         <input
             type="radio"
@@ -27,7 +34,7 @@
         <div class="tab-content mt-4">
             <Stats historicalData={data.areaInfo.areas} />
             <br />
-            <!--<Map areaData={data.areaInfo} /> -->
+            <Map areaData={data.areaInfo} />
         </div>
 
         <input type="radio" name="tabs" class="tab" aria-label="Live Data" />
@@ -35,4 +42,5 @@
             <LiveData data={data.areaInfo.areas} id={data.id} />
         </div>
     </div>
+-->
 {/if}

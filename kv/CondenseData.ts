@@ -52,7 +52,7 @@ function makeAreaInfo(data: mp): rootAreaInfo[] {
         console.log("Found petal node", data.url)
         let climbs = data.areas.filter(area => area.loaded && area.routeType === "climb") as MPClimb[]
 
-        climbs = climbs.filter(climb => climb.ticks.length > tickThreshold)
+        // climbs = climbs.filter(climb => climb.ticks.length > tickThreshold)
 
         const sortedClimbs = climbs.sort((a, b) => b.ticks.length - a.ticks.length);
         const topClimbs = sortedClimbs.slice(0, 50)

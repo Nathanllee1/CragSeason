@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@libsql/client": "^0.15.9",
     "@msgpack/msgpack": "^3.1.1",
+    "@openbeta/sandbag": "^0.0.51",
     "@types/cheerio": "^0.22.31",
     "@types/node": "^20.5.1",
     "better-sqlite3": "^11.7.2",
@@ -19,10 +21,12 @@
     "geolib": "^3.3.4",
     "https-proxy-agent": "^5.0.1",
     "node-fetch": "^2.7.0",
-    "svelte-chartjs": "^3.1.2"
+    "svelte-chartjs": "^3.1.2",
+    "undici": "^7.10.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
-    "@types/node-fetch": "^2.6.12"
+    "@types/node-fetch": "^2.6.12",
+    "esbuild": "^0.25.5"
   }
 }

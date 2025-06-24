@@ -86,7 +86,7 @@
 
 {#if showResults}
     {#if searchText.length !== 0}
-        <ul class="menu bg-base-200 absolute top-16 z-30 rounded min-w-[180px]">
+        <ul class="menu bg-base-200 absolute top-16 z-50 rounded min-w-[180px]">
             {#each results as result}
                 <li>
                     <a

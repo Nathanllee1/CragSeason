@@ -1,2 +1,17 @@
 @import 'tailwindcss';
 @plugin "daisyui";
+@plugin "@tailwindcss/typography";
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+.prose img {
+    @apply mx-auto rounded-lg shadow
+    /* aesthetics – optional */
+    w-auto max-w-full
+    /* never exceed the column */
+    max-h-[40vh];
+    /* but never taller than 70 % of viewport */
+}

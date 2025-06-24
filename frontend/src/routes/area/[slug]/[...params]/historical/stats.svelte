@@ -1,20 +1,25 @@
 <script lang="ts">
     import type { rootAreaInfo } from "$lib/kvTypes";
     import { onMount } from "svelte";
-
+    import { liveStore } from "../live/liveData";
+    
     export let historicalData: rootAreaInfo[];
 
     let totalTicks = 0;
     let totalClimbs = 0;
 
-    $: {
-        totalTicks = historicalData.reduce((prev, curr) => {
-            prev += curr.ticks.length;
-            totalClimbs += 1;
+    liveStore.subscribe((live) => {
+        totalClimbs = Object.keys(live.ticks).length
 
+        totalTicks = Object.values(live.ticks).reduce((prev, curr) => {
+
+            prev += curr.tickData.length;
             return prev;
-        }, 0);
-    }
+
+        }, 0)
+
+    })
+
 </script>
 
 <div class="stats shadow bg-base-200">

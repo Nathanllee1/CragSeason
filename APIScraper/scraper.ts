@@ -7,12 +7,12 @@ import {
   insertRoute,
   insertSection,
   insertTick,
-  selectArea,
   selectRoute,
+  selectArea,
+  selectAreaLeaf,
   hasChildAreas,
   hasChildRoutes,
   hasTicks,
-  selectAreaLeaf,
   insertTicksMany
 } from './db';
 
@@ -148,21 +148,7 @@ export function setMaxRequests(v: number) {
  * visited depth-first.
  */
 export async function processArea(id: number, parentId: number | null): Promise<void> {
-  const leafRow = selectAreaLeaf.get(id) as { is_leaf?: number } | undefined;
-  const areaExists = !!leafRow;
-
-  /* If the row exists AND either it is a leaf or we already have children,
-     we assume this subtree is finished and skip network work. */
-  if (
-    areaExists &&
-    (
-      leafRow!.is_leaf === 1 ||
-      hasChildAreas.get(id) ||
-      hasChildRoutes.get(id)
-    )
-  ) {
-    return;
-  }
+  const exists = selectAreaLeaf.get(id) as { is_leaf?: number } | undefined;
 
   if (requestCount >= MAX_REQUESTS) return;
 
@@ -171,26 +157,27 @@ export async function processArea(id: number, parentId: number | null): Promise<
   try { data = await fetchJson<AreaApi>(url); }
   catch { return; }
 
-  /* Insert (or replace) parent row once, same as before */
-  insertArea.run({
-    id: data.id,
-    title: data.title,
-    parent_id: parentId,
-    package_id: data.package_id,
-    breadcrumbs: data.breadcrumbs,
-    is_leaf: data.is_leaf ? 1 : 0,
-    url: data.url,
-    lat: data.coordinates[1] || null,
-    lon: data.coordinates[0] || null,
-    radius: data.radius,
-    summary: data.summary,
-    rating: data.rating,
-    popularity: data.popularity,
-    depth: data.depth,
-    submitted_by: data.submitted_by
-  });
-  for (const s of data.sections) {
-    insertSection.run({ parent_type: 'area', parent_id: data.id, title: s.title, html: s.html });
+  if (!exists) {
+    insertArea.run({
+      id: data.id,
+      title: data.title,
+      parent_id: parentId,
+      package_id: data.package_id,
+      breadcrumbs: data.breadcrumbs,
+      is_leaf: data.is_leaf ? 1 : 0,
+      url: data.url,
+      lat: data.coordinates[1] || null,
+      lon: data.coordinates[0] || null,
+      radius: data.radius,
+      summary: data.summary,
+      rating: data.rating,
+      popularity: data.popularity,
+      depth: data.depth,
+      submitted_by: data.submitted_by
+    });
+    for (const s of data.sections) {
+      insertSection.run({ parent_type: 'area', parent_id: data.id, title: s.title, html: s.html });
+    }
   }
 
   /* Now descend */

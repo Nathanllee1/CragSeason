@@ -35,8 +35,10 @@
   },
   "type": "module",
   "dependencies": {
-    "@libsql/client": "^0.15.9",
+    "@libsql/client": "^0.3.2",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@openai/agents": "^0.0.7",
+    "@openbeta/sandbag": "^0.0.51",
     "dotenv": "^16.5.0",
     "fuse.js": "^7.1.0",
     "layerchart": "^1.0.11",
@@ -44,6 +46,6 @@
     "svelte-collapsible": "git+https://git@github.com/Nathanllee1/svelte-collapsible.git",
     "svelte-frappe-charts": "^1.10.0",
     "svelte-markdown": "^0.4.1",
-    "sveltekit-top-loader": "^0.1.0"
+    "zod": "^3.25.67"
   }
 }

@@ -3,118 +3,84 @@
   import SvelteMarkdown from "svelte-markdown";
   import Suggestions from "./suggestions.svelte";
   import Header from "./header.svelte";
+  import Followup from "./followup.svelte";
+  import {
+    AnswerHandler,
+    AnswerHandlerStore,
+    createAnswerHandler,
+    type answerStore,
+  } from "./answerMaker";
+  import { get, type Writable } from "svelte/store";
   import Answer from "./answer.svelte";
-    import Followup from "./followup.svelte";
+  import type { AgentInputItem } from "@openai/agents";
+  import { historyStore, loadingStore } from "./history";
 
-  export let query = "";
-
-  /** live state */
-  let answer = "";
-  let log: string[] = [];
-  let loading = false;
-  let es: EventSource | null = null;
+  export let initialQuery = "";
 
   let askScreen = true;
 
-  async function fetchGuide(passedInAnswer: string | undefined) {
-    // reset UI
-    answer = "";
-    log = [];
-    loading = true;
+  async function askQuestion(question = "") {
+    loadingStore.set(true)
+    askScreen = false;
+    let history: AgentInputItem[];
+    historyStore.subscribe((h) => (history = h))(); // one-shot read
 
-    /* Close any previous stream */
-    es?.close();
+    setTimeout(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    }, 100);
 
-    let submittedQuery = passedInAnswer ?? query;
-    console.log(submittedQuery)
-
-    const qs = new URLSearchParams({ prompt: submittedQuery }).toString();
-    es = new EventSource(`/api/guide?${qs}`);
-
-    /* 1️⃣  tool-call chatter */
-    es.addEventListener("tool_call", (e) => {
-      const { name, args } = JSON.parse((e as MessageEvent).data);
-      log = [...log, `🔧 ${name}`];
-    });
-
-    /* 2️⃣  incremental answer tokens  (event: delta) */
-    es.addEventListener("delta", (e) => {
-      askScreen = false;
-      answer += JSON.parse((e as MessageEvent).data); // each chunk is raw markdown text
-    });
-
-    /* 3️⃣  final cleanup */
-    es.addEventListener("final", () => {
-      console.log(answer);
-      loading = false;
-      es?.close();
-      es = null;
-    });
-
-    es.onerror = () => {
-      loading = false;
-      es?.close();
-      es = null;
-    };
+    // call the helper that handles SSE
+    const newHistory = await AnswerHandlerStore.ask(question, history);
+    historyStore.set(newHistory); // replace with the authoritative copy
+    loadingStore.set(false)
   }
 
   async function newQuestion() {
-    answer = "";
-    log = [];
-    loading = false;
+    AnswerHandlerStore.reset();
     askScreen = true;
   }
-
-  /* optional: auto-fetch once component mounts */
-  onDestroy(() => es?.close());
 </script>
 
 <div class="h-full flex flex-col items-center justify-center pt-24">
   {#if askScreen}
-    <!-- 1) limit overall width to md breakpoint -->
     <div class="w-full max-w-screen-sm px-4">
-      {#if !loading}
+      {#if !$loadingStore}
         <Header />
         <div class="text-xs mb-4">
           Powered by Generative AI using data sourced from Mountain Project.
           Take results with a grain of salt :p
         </div>
         <!-- 2) let the input stretch, keep the button auto-sized -->
-        <form on:submit|preventDefault={() => fetchGuide(undefined)}>
+        <form on:submit|preventDefault={() => askQuestion(initialQuery)}>
           <div class="flex gap-2">
             <input
               class="input flex-1 w-full"
-              bind:value={query}
+              bind:value={initialQuery}
               placeholder="Ask for a guide…"
             />
-            <button type="submit" class="btn btn-primary" disabled={loading}>
-              {loading ? "Thinking…" : "Get guide"}
+            <button type="submit" class="btn btn-primary" disabled={$loadingStore}>
+              {$loadingStore ? "Thinking…" : "Get guide"}
             </button>
           </div>
         </form>
 
-        <Suggestions {fetchGuide} />
-      {:else}
-        <div>
-          Generating your report <span
-            class="loading loading-spinner loading-sm"
-          ></span>
-        </div>
-
-        <pre
-          class="bg-zinc-900 text-green-400 p-4 rounded-lg overflow-y-auto max-h-60 mt-4">
-        {#each log as line}
-            <div>{line}</div>
-          {/each}
-      </pre>
+        <Suggestions askInitialQuestion={askQuestion} />
       {/if}
     </div>
   {:else}
-    <!-- Live markdown answer -->
-    {#if answer}
-      <Answer {answer} />
-
-      <Followup {newQuestion} />
-    {/if}
+    {#each $AnswerHandlerStore as answer}
+      <div class="text-2xl font-semibold">{answer.question}</div>
+      <pre
+        class="bg-zinc-900 text-green-400 p-4 rounded-lg overflow-y-auto max-h-60 mt-4 mb-4 max-w-screen-sm">
+        {#each answer.toolCalls as line}
+          <div>{line.name} - {line.args}</div>
+        {/each}
+      </pre>
+      <!-- Live markdown answer -->
+      {#if answer}
+        <Answer answer={answer.text} />
+      {/if}
+    {/each}
+    <Followup {newQuestion} {askQuestion} />
   {/if}
 </div>

@@ -1,19 +1,20 @@
-// Core scraping logic.  Each function mirrors a Mountain Project API endpoint
-// and stores the resulting data in SQLite using helpers from `db.ts`.
+
 import fetch from 'node-fetch';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import {
+  /* inserts */
   insertArea,
   insertRoute,
   insertSection,
-  insertTick,
-  selectRoute,
-  selectArea,
-  selectAreaLeaf,
-  hasChildAreas,
-  hasChildRoutes,
-  hasTicks,
-  insertTicksMany
+  insertTicksMany,
+  /* look‑ups */
+  selectArea,               // SELECT * FROM areas WHERE id = ?
+  selectChildAreas,         // SELECT id, children_complete FROM areas  WHERE parent_id = ?
+  selectChildRoutes,        // SELECT id FROM routes WHERE area_id   = ?
+  hasTicks,                 // SELECT 1 FROM ticks WHERE route_id   = ? LIMIT 1
+  /* flags */
+  markAreaComplete,          // UPDATE areas SET children_complete = 1 WHERE id = ?
+  selectRoute
 } from './db';
 
 export interface AreaChild {
@@ -78,86 +79,87 @@ export interface TickApi {
 
 export type RootArea = { id: number };
 
-// Top-level areas to start scraping from. The list lives in `rootAreas.ts` to
-// keep it simple and avoid parsing another file.
+// Top‑level areas to start scraping from.  Lives in `rootAreas.ts`.
 import rootAreas from './rootAreas';
 
-// Rate limit to be kind to the API: max 4 requests per second
-const RATE_LIMIT_MS = 0;
+// ───────────────────────────────────────────────────────────────────────────────
+// Networking helpers (unchanged except for rate‑count bookkeeping)
+// ───────────────────────────────────────────────────────────────────────────────
+
+const RATE_LIMIT_MS = 0; // caller can bump if hammering the API for real
 let lastRequestTime = 0;
+let requestCount    = 0;
+export let MAX_REQUESTS = 100_000_000;
+export function setMaxRequests(v: number) { MAX_REQUESTS = v; }
+export function getRequestCount()        { return requestCount; }
+export function resetRequestCount()      { requestCount = 0; }
+
+async function fetchJson<T>(url: string, attempt = 0): Promise<T> {
+  const proxy   = process.env.http_proxy || process.env.HTTP_PROXY;
+  const options = proxy ? { agent: new HttpsProxyAgent(proxy) } : {};
+
+  console.log(`Fetching: ${url} (attempt ${attempt + 1})`);
+
+  const now  = Date.now();
+  const wait = RATE_LIMIT_MS - (now - lastRequestTime);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastRequestTime = Date.now();
+  requestCount++;
+
+  const MAX_RETRIES = 5;
+  const res = await fetch(url, options).catch(err => attempt < MAX_RETRIES ? null : Promise.reject(err));
+
+  if (!res) {
+    await new Promise(r => setTimeout(r, 2 ** attempt * 1_000));
+    return fetchJson<T>(url, attempt + 1);
+  }
+  if (res.status === 429 || res.status >= 500) {
+    if (attempt < MAX_RETRIES) {
+      await new Promise(r => setTimeout(r, 2 ** attempt * 1_000));
+      return fetchJson<T>(url, attempt + 1);
+    }
+  }
+  if (!res.ok) throw new Error(`Failed ${url}: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Traversal entry‑point helpers
+// ───────────────────────────────────────────────────────────────────────────────
 
 export function parseRootAreas(): RootArea[] {
   return rootAreas.map(id => ({ id }));
 }
 
-// Utility used by all network calls.  Honors the `http_proxy` environment
-// variable for environments that require a proxy.  Implements exponential
-// backoff with retries when the server responds with rate limiting or
-// transient errors.
-async function fetchJson<T>(url: string, attempt = 0): Promise<T> {
-  const proxy = process.env.http_proxy || process.env.HTTP_PROXY;
-
-  console.log("Scraping", url)
-
-  const options: any = {};
-  if (proxy) {
-    options.agent = new HttpsProxyAgent(proxy);
-  }
-
-  const MAX_RETRIES = 5;
-
-  // rate limiting
-  const now = Date.now();
-  const wait = RATE_LIMIT_MS - (now - lastRequestTime);
-  if (wait > 0) {
-    await new Promise(r => setTimeout(r, wait));
-  }
-  lastRequestTime = Date.now();
-  requestCount++;
-
-  const res = await fetch(url, options).catch(err => {
-    if (attempt < MAX_RETRIES) return null;
-    throw err;
-  });
-
-  if (!res) {
-    await new Promise(r => setTimeout(r, 2 ** attempt * 1000));
-    return fetchJson<T>(url, attempt + 1);
-  }
-
-  if (res.status === 429 || res.status >= 500) {
-    if (attempt < MAX_RETRIES) {
-      await new Promise(r => setTimeout(r, 2 ** attempt * 1000));
-      return fetchJson<T>(url, attempt + 1);
-    }
-  }
-
-  if (!res.ok) throw new Error(`Failed ${url}: ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
-let requestCount = 0;
-export let MAX_REQUESTS = 1000000;
-export function setMaxRequests(v: number) {
-  MAX_REQUESTS = v;
-}
-
 /**
- * Recursively download an area and all of its children.  The parent area ID is
- * stored so the hierarchy can be reconstructed later.  Routes and sub-areas are
- * visited depth-first.
+ * Recursively walk an area.  If we have a row **and** its `children_complete`
+ * flag is set, we stay offline and grab the child IDs from SQLite. Otherwise
+ * we re‑pull the JSON (idempotent) to finish / resume.
  */
 export async function processArea(id: number, parentId: number | null): Promise<void> {
-  const exists = selectAreaLeaf.get(id) as { is_leaf?: number } | undefined;
+  const stored = selectArea.get(id) as { is_leaf?: number; children_complete?: number } | undefined;
 
+  if (stored && stored.children_complete === 1) {
+    // Fast‑path: descend completely offline ➜
+    for (const { id: childId, children_complete } of selectChildAreas.all(id) as { id: number; children_complete: number }[]) {
+      await processArea(childId, id); // children_complete check happens recursively
+    }
+    for (const { id: routeId } of selectChildRoutes.all(id) as { id: number }[]) {
+      await processRoute(routeId, id);
+    }
+    return;
+  }
+
+  // Slow‑path (initial scrape or crash‑resume)
   if (requestCount >= MAX_REQUESTS) return;
-
   const url = `https://www.mountainproject.com/api/v2/areas/${id}`;
+
   let data: AreaApi;
   try { data = await fetchJson<AreaApi>(url); }
   catch { return; }
 
-  if (!exists) {
+  if (!stored) {
+    // first time we see this area ➜ insert row + static blobs
     insertArea.run({
       id: data.id,
       title: data.title,
@@ -173,14 +175,15 @@ export async function processArea(id: number, parentId: number | null): Promise<
       rating: data.rating,
       popularity: data.popularity,
       depth: data.depth,
-      submitted_by: data.submitted_by
+      submitted_by: data.submitted_by,
+      children_complete: 0 // default
     });
     for (const s of data.sections) {
       insertSection.run({ parent_type: 'area', parent_id: data.id, title: s.title, html: s.html });
     }
   }
 
-  /* Now descend */
+  // descend depth‑first (this may resume half‑done branches)
   for (const child of data.children) {
     if (child.type === 'Area') {
       await processArea(child.id, data.id);
@@ -188,22 +191,26 @@ export async function processArea(id: number, parentId: number | null): Promise<
       await processRoute(child.id, data.id);
     }
   }
+
+  // Mark area as fully processed so future runs can skip network
+  markAreaComplete.run(id);
 }
 
-
 /**
- * Fetch detailed information for a single route and insert it if we haven't
- * seen it before.  Once the route itself is stored the function proceeds to
- * download all tick history for that route.
+ * Fetch a single route unless it’s already cached.  We *always* double‑check
+ * tick history because that’s append‑only and cheap to query.
  */
 export async function processRoute(id: number, areaId: number): Promise<void> {
-  const already = selectRoute.get(id);
+  const already = selectRoute.get(id) as { id: number } | undefined;
 
-  /* If route exists AND we already have at least one tick, assume done. */
-  if (already && hasTicks.get(id)) return;
+  if (already) {
+    if (!hasTicks.get(id)) await processTicks(id); // grab ticks if none yet
+    return;                                         // skip network fetch
+  }
+
   if (requestCount >= MAX_REQUESTS) return;
-
   const url = `https://www.mountainproject.com/api/v2/routes/${id}`;
+
   let data: RouteApi;
   try { data = await fetchJson<RouteApi>(url); }
   catch { return; }
@@ -229,25 +236,24 @@ export async function processRoute(id: number, areaId: number): Promise<void> {
     insertSection.run({ parent_type: 'route', parent_id: data.id, title: s.title, html: s.html });
   }
 
-  await processTicks(id);   // idempotent; duplicates ignored by PRIMARY KEY
+  await processTicks(id);   // idempotent; duplicates ignored by PK
 }
 
+/**
+ * Download (or refresh) all ticks for a route.
+ */
 export async function processTicks(routeId: number): Promise<void> {
   let page = 1;
 
   while (true) {
     if (requestCount >= MAX_REQUESTS) return;
-
     const url = `https://www.mountainproject.com/api/v2/routes/${routeId}/ticks?page=${page}`;
-    let json: any;
-    try {
-      json = await fetchJson<any>(url);
-    } catch {
-      break;
-    }
 
-    // Build an array, then write once
-    const batch = (json.data as TickApi[] | undefined)?.map(tick => ({
+    let json: { data: TickApi[]; next_page_url: string | null };
+    try { json = await fetchJson<any>(url); }
+    catch { break; }
+
+    const batch = (json.data ?? []).map(tick => ({
       id: tick.id,
       route_id: routeId,
       date: tick.date,
@@ -260,22 +266,10 @@ export async function processTicks(routeId: number): Promise<void> {
       updatedAt: tick.updatedAt,
       user_id: tick.user && typeof tick.user !== 'boolean' ? tick.user.id : null,
       user_name: tick.user && typeof tick.user !== 'boolean' ? tick.user.name : null
-    })) ?? [];
+    }));
 
-    if (batch.length) insertTicksMany(batch);   // 🚀 one transaction
-
+    if (batch.length) insertTicksMany(batch);
     if (!json.next_page_url) break;
     page++;
   }
 }
-
-// Helpers mainly used by tests or the CLI to report progress and to reset the
-// request counter between runs.
-export function getRequestCount() {
-  return requestCount;
-}
-
-export function resetRequestCount() {
-  requestCount = 0;
-}
-

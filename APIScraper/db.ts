@@ -106,7 +106,6 @@ export const insertTicksMany = db.transaction((rows: TickRow[]) => {
 
 // Simple existence checks used to avoid re-downloading data on subsequent runs.
 export const selectArea = db.prepare('SELECT 1 FROM areas WHERE id = ?');
-export const selectRoute = db.prepare('SELECT 1 FROM routes WHERE id = ?');
 
 export const hasChildAreas = db.prepare(
   'SELECT 1 FROM areas  WHERE parent_id = ? LIMIT 1'
@@ -124,4 +123,21 @@ export const hasTicks = db.prepare(
 
 export const selectAreaLeaf = db.prepare(
   'SELECT is_leaf FROM areas WHERE id = ?'
+);
+
+
+export const selectChildAreas  = db.prepare(
+  'SELECT id FROM areas  WHERE parent_id = ?'
+);
+
+export const selectChildRoutes = db.prepare(
+  'SELECT id FROM routes WHERE area_id   = ?'
+);
+
+export const markAreaComplete = db.prepare(
+  'UPDATE areas SET children_complete = 1 WHERE id = ?'
+);
+
+export const selectRoute = db.prepare(
+  'SELECT id FROM routes WHERE id = ?'
 );

@@ -6,7 +6,7 @@
         "Outline the approach beta and camping information for the Red River Gorge",
     ];
 
-    export let fetchGuide: (passedInAnswer: string | undefined) => {} 
+    export let askInitialQuestion: (passedInAnswer: string | undefined) => {} 
 
 </script>
 
@@ -14,7 +14,7 @@
     {#each suggestions as suggestion}
         <button
             class="font-light border-1 border-[var(--color-base-300)] hover:border-[var(--color-secondary)] hover:cursor-pointer rounded-lg p-4"
-            on:click={() => fetchGuide(suggestion)}
+            on:click={() => askInitialQuestion(suggestion)}
         >
             {suggestion}
         </button>

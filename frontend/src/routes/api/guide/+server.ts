@@ -1,13 +1,33 @@
 // src/routes/api/guide/+server.ts
-import type { RequestHandler } from '../../search/api/$types';
-import { run, RunMessageOutputItem, RunToolCallItem, type RunStreamEvent } from '@openai/agents';
+import { run, user, type AgentInputItem } from '@openai/agents';
 import { planner } from '$lib/search/searchAgent';
+import { error, type RequestHandler } from '@sveltejs/kit';
+import { string, z } from "zod"
 
+const Submission = z.object({
+  question: z.string().min(1),
+  context: z.array(z.unknown()).optional() 
+});
 
-export const GET: RequestHandler = async ({ url }) => {
-  const prompt = url.searchParams.get('prompt') ?? '';
+export const POST: RequestHandler = async ({ url, request }) => {
+
+  const body = await request.json();
+  const parse = Submission.safeParse(body);
+  if (!parse.success) {
+    return new Response('Malformed body', { status: 422 });
+  }
+  const { question, context = [] } = parse.data;
+
+  const input: AgentInputItem[] = [
+    ...(context as AgentInputItem[]),
+    user(question)
+  ];
+
+  const ac = new AbortController();
+  request.signal.addEventListener('abort', () => ac.abort());
+
   try {
-    const stream = await run(planner, prompt, { stream: true });
+    const stream = await run(planner, input, { stream: true, maxTurns: 20, signal: ac.signal });
     const encoder = new TextEncoder();
 
     const sse = new ReadableStream({
@@ -45,7 +65,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
           /* stream is finished */
           await stream.completed;
-          controller.enqueue(encoder.encode('event: final\ndata:\n\n'));
+          controller.enqueue(encoder.encode(`event: final\ndata:${JSON.stringify(stream.history)}\n\n`));
         } catch (err) {
           controller.enqueue(
             encoder.encode(`event: error\ndata:${JSON.stringify((err as Error).message)}\n\n`)
@@ -56,7 +76,7 @@ export const GET: RequestHandler = async ({ url }) => {
       },
 
       cancel() {
-        stream.cancel?.(); // abort if the browser disconnects
+        // ac.abort()
       }
     });
 

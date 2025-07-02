@@ -11,47 +11,18 @@ import { createClient } from "@libsql/client";
 import { Agent, tool, run, handoff, type RunStreamEvent } from "@openai/agents";
 import { z } from "zod";
 import { RECOMMENDED_PROMPT_PREFIX } from '@openai/agents-core/extensions';
+import { scoreRangeForGrade, type ClimbKind } from "./gradeLib";
+import { all, sanitizeFtsQuery } from "./utils";
+import { areaFinderTool } from "./findArea";
+import { bm25SearchDescriptions } from "./ftsSearch";
+import { getClimbsInArea, getClimbsInAreaByKeyword } from "./routeSearch";
 
-// DB client
-const turso = createClient({
-  url: "http://127.0.0.1:8080" // process.env.TURSO_DATABASE_URL!,
-  // authToken: process.env.TURSO_AUTH_TOKEN,
-});
 
-/* helper: execute query and return rows */
-async function all(sql: string, params: unknown[] = []) {
-  const { rows } = await turso.execute(sql, params);
-  return rows as Record<string, unknown>[];
-}
 
 /* ───────────────────────────────────────────────
    TOOL DEFINITIONS
 ───────────────────────────────────────────────*/
 
-function searchAreas() {
-  const paramsSchema = z.object({
-    name: z.string(),
-    limit: z.number().int().min(1),
-  });
-
-  return tool({
-    name: "search_areas",
-    description:
-      "Find areas whose title roughly matches name, ordered by popularity.",
-    parameters: paramsSchema,
-    execute: async ({ name, limit }) => {
-      return await all(
-        `SELECT a.id, a.title, a.url, a.lat, a.lon, a.popularity, a.breadcrumbs
-         FROM areas_fts
-         JOIN areas a ON a.id = areas_fts.rowid
-         WHERE areas_fts MATCH ?
-         ORDER BY bm25(areas_fts) ASC, a.popularity ASC
-         LIMIT ?;`,
-        [name, limit]
-      );
-    },
-  });
-}
 
 
 export function searchRoutes() {
@@ -85,151 +56,34 @@ export function searchRoutes() {
   });
 }
 
-function searchBreadcrumbs() {
+function getComments() {
   const paramsSchema = z.object({
-    tokens: z.array(z.string()),
-    limit: z.number().int().min(1),
+    id: z.number().int(),
+    type: z.enum(["areas", "routes"]).default("routes"),
   });
 
   return tool({
-    name: "search_breadcrumbs",
-    description:
-      "Find areas whose breadcrumb path contains all tokens (case‑insensitive).",
+    name: "get_comments",
+    description: "Return comments for a route or area.",
     parameters: paramsSchema,
-    execute: async ({ tokens, limit }) => {
-      if (!tokens.length) return [];
-      const words = tokens
-        .flatMap((t) => t.match(/\\w+/g) ?? [])
-        .join(" AND ");
-      return await all(
-        `SELECT a.id, a.title, a.url, a.lat, a.lon, a.popularity, a.breadcrumbs
-           FROM area_breadcrumbs_fts f
-           JOIN areas a ON a.id = f.area_id
-          WHERE area_breadcrumbs_fts MATCH ?
-          ORDER BY rank, a.popularity ASC
-          LIMIT ?;`,
-        [words, limit]
-      );
-    },
-  });
-}
+    execute: async ({ id, type }) => {
 
-function searchAndRankRoutes() {
-  const paramsSchema = z.object({
-    areaIds: z.array(z.number().int()).nullable(),
-    grade: z.string().nullable(),
-    limit: z.number().int().min(1),
-  });
+      const url = `https://www.mountainproject.com/api/v2/${type}/${id}/comments`;
 
-  return tool({
-    name: "search_and_rank_routes",
-    description:
-      "Return popular routes filtered by grade within the given areas (recursive).",
-    parameters: paramsSchema,
-    execute: async ({ areaIds, grade, limit }) => {
-      const params: unknown[] = [];
-      let cte = "";
-      let where = "";
+      const res = await fetch(url);
 
-      if (areaIds && areaIds.length) {
-        const placeholders = areaIds.map(() => "?").join(",");
-        params.push(...areaIds);
-        cte =
-          `WITH RECURSIVE subareas(id) AS (` +
-          ` SELECT id FROM areas WHERE id IN (${placeholders})` +
-          ` UNION ALL SELECT a.id FROM areas a JOIN subareas s ON a.parent_id = s.id)`;
-        where = "WHERE r.area_id IN (SELECT id FROM subareas)";
+      if (!res.ok) {
+        throw new Error(`Failed to fetch comments from ${url}: ${res.statusText}`);
       }
 
-      if (grade) {
-        where += where ? " AND" : "WHERE";
-        where += " r.difficulty = ?";
-        params.push(grade);
-      }
+      const data = await res.json();
 
-      params.push(limit);
+      return data.slice(0, 3);
 
-      return await all(
-        `${cte}
-         SELECT r.id, r.title, r.area_id, r.url,
-                r.difficulty, r.pitches, r.rating, r.popularity, r.types, r.thumbnail
-           FROM routes r
-           ${where}
-           ORDER BY r.popularity DESC
-           LIMIT ?;`,
-        params
-      );
-    },
-  });
+    }
+  })
 }
 
-function bm25SearchDescriptions() {
-  const Params = z.object({
-    query: z.string(),
-    areaIds: z.array(z.number().int()).min(1),
-    limit: z.number().int().min(1),
-    kinds: z.array(z.enum(["area", "route"]).nullable()), // default: both
-  });
-
-  return tool({
-    name: "search_descriptions_bm25",
-    description: `
-BM25-ranked full-text search on idx_descriptions_fts.
-
-• areaIds – root areas; search recurses through all descendants.
-• kinds   – restrict to ["area"], ["route"], or both (default).`,
-    parameters: Params,
-    execute: async (p) => {
-      /* ───── 1) build the recursive area set ───── */
-      const placeholders = p.areaIds.map(() => "?").join(",");
-      const cte = `
-        WITH RECURSIVE subareas(id) AS (
-          SELECT id FROM areas WHERE id IN (${placeholders})
-          UNION ALL
-          SELECT a.id FROM areas a
-          JOIN subareas s ON a.parent_id = s.id
-        )`;
-
-      /* ───── 2) optional kind filter ───── */
-      let kindSql = "";
-      const sqlParams: unknown[] = [...p.areaIds, p.query]; // ids first, then MATCH
-      if (p.kinds?.length === 1) {
-        kindSql = "AND d.parent_type = ?";
-        sqlParams.push(p.kinds[0]);
-      }
-
-      /* ───── 3) main query ───── */
-      sqlParams.push(p.limit);
-      const rows = await all(
-        `
-        ${cte}
-        SELECT d.parent_type,
-               d.parent_id,
-               d.description,
-               bm25(idx_descriptions_fts) AS score
-          FROM idx_descriptions_fts
-          JOIN descriptions d       ON d.rowid = idx_descriptions_fts.rowid
-          /* link ‘area’ rows to their own id,
-             link ‘route’ rows to the area they belong to */
-          LEFT JOIN areas  a ON d.parent_type = 'area'  AND a.id = d.parent_id
-          LEFT JOIN routes r ON d.parent_type = 'route' AND r.id = d.parent_id
-          /* target set: any description whose *area context*
-             is in the recursive subareas list */
-         WHERE idx_descriptions_fts MATCH ?
-           AND (
-                (d.parent_type = 'area'  AND d.parent_id IN (SELECT id FROM subareas))
-             OR (d.parent_type = 'route' AND r.area_id  IN (SELECT id FROM subareas))
-           )
-           ${kindSql}
-         ORDER BY score                /* lower BM25 ⇒ better */
-         LIMIT ?;`,
-        sqlParams
-      );
-
-      return rows;
-    },
-  });
-}
 
 function getArea() {
   const paramsSchema = z.object({
@@ -241,11 +95,23 @@ function getArea() {
     description: "Return the markdown description for an area",
     parameters: paramsSchema,
     execute: async ({ id }) => {
-      const { rows } = await turso.execute(
-        `SELECT description FROM descriptions WHERE parent_type = ? AND parent_id = ?`,
-        ["area", id]
+      const rows = await all(
+        `SELECT
+          d.description,
+          d.parent_id,
+          r.url,
+          r.title,
+          r.summary,
+          r.breadcrumbs
+
+        FROM descriptions AS d
+        LEFT JOIN areas AS r
+              ON d.parent_id = r.id
+        WHERE d.parent_id = ?;  
+        `,
+        [id]
       );
-      return (rows[0] as any)?.description ?? "";
+      return (rows[0] as any) ?? "";
     },
   });
 }
@@ -260,11 +126,26 @@ function getRoute() {
     description: "Return the markdown description for a route",
     parameters: paramsSchema,
     execute: async ({ id }) => {
-      const { rows } = await turso.execute(
-        `SELECT description FROM descriptions WHERE parent_type = ? AND parent_id = ?`,
-        ["route", id]
+      const rows = await all(
+        `SELECT
+          d.description,
+          d.parent_id,
+          r.url,
+          r.title,
+          r.difficulty,
+          r.pitches,
+          r.summary,
+          r.rating,
+          r.popularity,
+          r.thumbnail
+        FROM descriptions AS d
+        LEFT JOIN routes AS r
+              ON d.parent_id = r.id
+        WHERE d.parent_id = ?;  
+        `,
+        [id]
       );
-      return (rows[0] as any)?.description ?? "";
+      return (rows[0] as any) ?? "";
     },
   });
 }
@@ -285,10 +166,16 @@ Your data is sourced from mountain project.
 
 **Workflow (ReAct style)**
 Think → decide → CALL_TOOL → observe → repeat.
-Call search_areas, search_and_rank_routes, search_breadcrumbs, and search_routes at most twice unless absolutely necessary. To narrow down specific
-areas or climbs call bm25SearchDescriptions which does a text search on climbs / areas / both within a broader area. If you search for something and 
-it doesn't come up, it might be since it's phrased slightly differently, find unique keywords that might help you narrow down the climb or area.
-If information is missing or ambiguous, ask the user a follow-up.
+
+Sometimes, a user will request for a specific information about an area. Use AreaFinder to get the id of the area for the other tools.
+To narrow down all climbs in an area by a short keyword, call get_climbs_by_keyword. Once you get a list of climbs, call getClimb on the relevant
+ones to get more information for your report.
+
+If they ask you for details about a specific climb, use searchRoutes and get more details with get_comments.
+
+To get specific information about a given area, call get_climbs_in_area which lets you search climbs within a broader area.
+Don't put grades in the text search, use the minGrade / maxGrade functionality. If results don't come up, expand the query by using less filters.
+Keep trying and go with the most popular area or route.
 
 If you feel you cannot answer a user's question with the data you found, do not try to come up with missing data, just say there was an
 issue fetching it. However, keep going until around 9 turns if you can't find anything
@@ -296,7 +183,7 @@ issue fetching it. However, keep going until around 9 turns if you can't find an
 Fetch information about the area the user wanted, so if the user wanted info on red rocks, you would get full info with getArea.
 
 Once you have enough information to answer the user's question, you're going to write a helpful answer. Start with a quick blurb about the overall climbing area, maybe a sentence or two
-using the tool getArea (THIS IS REQUIRED).
+using the tool getArea (THIS IS REQUIRED). Use the tool getComments to fetch comments about the area or route when the user asks about a specific route or area.
 Always fetch route descriptions for the selected routes using getRoute and write a helpful answer (bold route names, grade, ★rating/5, pitches, etc) this MUST be in markdown
 Use headings to structure the data. Avoid using bullet points, bold the title of field like **Pitches:** 4
 Write a concise summary from the route description, but do not use the same wording. Feel free to embed thumbnail images in.
@@ -310,13 +197,13 @@ After that, do **not** call any more tools.
 Never write SQL directly.
 `,
   tools: [
-    searchAreas(),
-    searchBreadcrumbs(),
-    searchAndRankRoutes(),
+    areaFinderTool,
     getArea(),
     getRoute(),
-    bm25SearchDescriptions(),
+    getClimbsInArea(),
+    getClimbsInAreaByKeyword(),
     searchRoutes(),
+    getComments()
   ],
   model: "gpt-4.1-mini",
 });

@@ -1,5 +1,4 @@
 <script>
-    import { SvelteKitTopLoader } from "sveltekit-top-loader";
     import "../app.css";
     import Help from "./help.svelte";
     import Search from "./search.svelte";
